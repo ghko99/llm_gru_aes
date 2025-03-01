@@ -1,27 +1,50 @@
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 from datasets import load_from_disk
 from data_provider.essay_dataset import EssayDataset
+from transformers import TrainingArguments, Trainer
 from kobert_transformers import get_tokenizer
-from torch.utils.data import DataLoader
 from models.essay_scorer import EssayScorer
 
-dataset = load_from_disk('./aes_dataset')
+def load_aes_dataset():
+    dataset = load_from_disk('./aes_dataset')
 
-train, valid = dataset['train'] , dataset['test']
+    train, valid = dataset['train'] , dataset['test']
 
-tokenizer = get_tokenizer()
+    tokenizer = get_tokenizer()
 
-train_dataset = EssayDataset(train['text'], train['label'], tokenizer)
-valid_dataset = EssayDataset(valid['text'], valid['label'], tokenizer)
+    train_dataset = EssayDataset(train['text'], train['label'], tokenizer)
+    valid_dataset = EssayDataset(valid['text'], valid['label'], tokenizer)
 
-train_dataloader = DataLoader(train_dataset, batch_size=2, shuffle=True)
-valid_dataloader = DataLoader(valid_dataset, batch_size=2, shuffle=False)
+    return train_dataset, valid_dataset
 
-model = EssayScorer().cuda()
-IDX = 0
-for batch in train_dataloader:
-    if IDX == 5:
-        break
-    x = model(batch)
-    print(x)
-    IDX += 1
+def aes_train():
 
+    train_dataset, valid_dataset = load_aes_dataset()
+    model = EssayScorer()
+    training_args = TrainingArguments(
+        output_dir='./results',
+        evaluation_strategy='epoch',
+        save_strategy='epoch',
+        learning_rate=1e-5,
+        per_device_train_batch_size=2,
+        per_device_eval_batch_size=2,
+        fp16=True,
+        num_train_epochs=20,
+        weight_decay=0.01,
+        logging_dir='./logs',
+        logging_steps=1,
+        save_total_limit=2,
+        load_best_model_at_end=True
+    )
+    trainer = Trainer(
+        model=model,
+        args=training_args,
+        train_dataset=train_dataset,
+        eval_dataset=valid_dataset
+    )
+    trainer.train()
+    trainer.save_model("./essay_scorer_model")
+
+if __name__ == "__main__":
+    aes_train()

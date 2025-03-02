@@ -1,5 +1,3 @@
-import os
-os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 from datasets import load_from_disk
 from data_provider.essay_dataset import EssayDataset
 from transformers import TrainingArguments, Trainer

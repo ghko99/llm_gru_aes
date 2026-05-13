@@ -1,0 +1,7 @@
+torch
+transformers
+datasets
+kobert-transformers
+scikit-learn
+numpy
+pandas
